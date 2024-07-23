@@ -1,4 +1,5 @@
 use std::any::type_name_of_val;
+use std::collections::{BTreeSet, HashSet};
 
 mod os;
 
@@ -103,6 +104,16 @@ fn car_factory(color: String, transmission: Transmission, convertible: bool) -> 
     };
 
     return car;
+}
+
+fn conditional_print(num: usize) {
+    if num > 10 {
+        println!("{} is greater than 10.", num);
+    } else if num % 2 == 0 {
+        println!("{} is even.", num);
+    } else {
+        print!("{} is odd.", num);
+    }
 }
 
 fn main() {
@@ -451,4 +462,88 @@ fn main() {
 
     proc_queue.sort();
     println!("{:#?}", proc_queue);
+
+    // If conditional
+    conditional_print(11);
+    conditional_print(4);
+    conditional_print(5);
+
+    // While loop
+    let mut countdown = 10;
+    while countdown > 0 {
+        println!("{}...", countdown);
+        countdown -= 1;
+    }
+
+    // Alternative loop construct
+    let mut count = 10;
+    loop {
+        println!("{}....", count);
+        if count == 0 {
+            break;
+        }
+        count -= 1;
+    }
+
+    // For loop construct
+    for i in 0..10 {
+        println!("{}", i);
+    }
+
+    println!("Iterating over vector:");
+    let list = vec![3, 2, 1];
+    for item in list {
+        println!("list item: {}", item);
+    }
+
+    // Iterator trait
+    let list1 = vec![3, 2, 1];
+    for (i, item) in list1.iter().enumerate() {
+        println!("list item {}: {}", i, item);
+    }
+
+    // Functional transformations:
+    let triple_list: Vec<_> = list1.iter().map(|x| x * 3).collect();
+    for item in triple_list {
+        println!("triple_list item: {}", item);
+    }
+
+    println!("\n Iterating over ordered set:");
+    let mut o_set = BTreeSet::new();
+    o_set.insert(1);
+    o_set.insert(2);
+    o_set.insert(3);
+    for item in o_set {
+        println!("{} in BTree set", item);
+    }
+
+    println!("\nIterating over hash set:");
+    let mut h_Set = HashSet::new();
+    h_Set.insert(1);
+    h_Set.insert(2);
+    h_Set.insert(3);
+    for item in h_Set {
+        println!("{} in hash set", item);
+    }
+
+    // Pattern matching
+    let x = 10; // Compiler infers i32 by default
+    match x {
+        1 | 2 | 3 => println!("number is 1 or 2 or 3"), // Specify three literal values
+        4..=10 => println!("number is between 4 and 10 inclusive"), // Specify a inclusive range
+        x if x * x < 250 => println!("number squared is less than 250"), // Gaurd expression
+        _ => println!("number does not meet any previous condition"), // Default case
+    }
+
+    // Condensed pattern matching 
+    let curr_state = os::State::Running;
+
+    // match curr_state {
+    //     State::Running => println!("Process is running!"),
+    //     State::Stopped => {},   // Do nothing
+    //     State::Sleeping => {},  // Do nothing
+    // };
+    if let os::State::Running = curr_state {
+        println!("Process is running!");
+    }
 }
