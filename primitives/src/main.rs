@@ -123,8 +123,7 @@ fn main() {
     a = 1;
     println!("Value of a is {}", a);
 
-    // throw error due to variable immutability
-
+    // Throw error due to variable immutability
     // a = 2;
     // println!("Value of a is {}", a);
 
