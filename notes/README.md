@@ -1,6 +1,195 @@
 # General Notes
 
-## Display and Error trait
+## Trait
+
+Traits in Rust are a powerful feature that allows you to define shared behavior across different types. They are similar to interfaces in other languages like Java or C#, but with some key differences. Traits enable you to specify a set of methods that a type must implement, and they can also include default method implementations.
+
+### What is a Trait?
+
+A **trait** is a collection of method signatures (and potentially associated types or constants) that define behavior. When a type implements a trait, it agrees to provide concrete implementations for the methods specified by that trait.
+
+#### Defining a Trait
+
+Here's a simple example of defining a trait:
+
+```rust
+trait Greet {
+    fn greet(&self) -> String;
+}
+```
+
+In this example:
+- The `Greet` trait defines a single method `greet` that returns a `String`.
+- Any type that implements this trait must provide an implementation for the `greet` method.
+
+#### Implementing a Trait for a Type
+
+To implement a trait for a specific type, you use the `impl` keyword:
+
+```rust
+struct Person {
+    name: String,
+}
+
+impl Greet for Person {
+    fn greet(&self) -> String {
+        format!("Hello, my name is {}.", self.name)
+    }
+}
+```
+
+In this example:
+- The `Person` struct implements the `Greet` trait by providing an implementation for the `greet` method.
+
+#### Using Traits
+
+Once a type implements a trait, you can call the trait's methods on instances of that type:
+
+```rust
+fn main() {
+    let person = Person {
+        name: String::from("Alice"),
+    };
+    println!("{}", person.greet());
+}
+```
+
+This would output:
+```
+Hello, my name is Alice.
+```
+
+### Default Implementations
+
+Traits in Rust can also provide default implementations for methods. If a type implements the trait but does not provide an implementation for a method, the default implementation is used.
+
+```rust
+trait Greet {
+    fn greet(&self) -> String {
+        String::from("Hello!")
+    }
+}
+
+struct Person {
+    name: String,
+}
+
+// No need to implement greet() unless you want to override the default
+impl Greet for Person {}
+```
+
+Here, `Person` automatically gets the `greet` method with the default implementation, so calling `person.greet()` would return `"Hello!"`.
+
+### Trait Bounds
+
+Traits are also used to define **trait bounds** for generic functions. Trait bounds specify that a generic type parameter must implement a particular trait.
+
+```rust
+fn print_greeting<T: Greet>(item: T) {
+    println!("{}", item.greet());
+}
+```
+
+In this example:
+- The function `print_greeting` accepts any type `T` that implements the `Greet` trait.
+- This ensures that you can call the `greet` method on `item` within the function.
+
+### Multiple Trait Implementations
+
+Rust allows a type to implement multiple traits. This is useful for composing behavior:
+
+```rust
+trait Greet {
+    fn greet(&self) -> String;
+}
+
+trait Farewell {
+    fn say_goodbye(&self) -> String;
+}
+
+struct Person {
+    name: String,
+}
+
+impl Greet for Person {
+    fn greet(&self) -> String {
+        format!("Hello, my name is {}.", self.name)
+    }
+}
+
+impl Farewell for Person {
+    fn say_goodbye(&self) -> String {
+        format!("Goodbye from {}!", self.name)
+    }
+}
+```
+
+Here, `Person` implements both `Greet` and `Farewell`, allowing you to call both `greet` and `say_goodbye` on a `Person` instance.
+
+### Traits and Polymorphism
+
+Traits enable polymorphism in Rust. You can use traits to define behavior that can be shared across different types, allowing you to write code that can operate on various types in a generic way.
+
+#### Trait Objects
+
+Rust supports **trait objects**, which allow for dynamic dispatch (runtime polymorphism). Trait objects are created by using `&dyn Trait` or `Box<dyn Trait>`:
+
+```rust
+fn greet_all(items: Vec<&dyn Greet>) {
+    for item in items {
+        println!("{}", item.greet());
+    }
+}
+
+fn main() {
+    let person = Person { name: String::from("Alice") };
+    let another_person = Person { name: String::from("Bob") };
+
+    let people: Vec<&dyn Greet> = vec![&person, &another_person];
+    greet_all(people);
+}
+```
+
+In this example:
+- The function `greet_all` accepts a vector of references to any type that implements the `Greet` trait.
+- This allows for dynamic dispatch, where the specific `greet` method is determined at runtime.
+
+### Associated Types and Trait Bounds
+
+Traits can also define associated types and constants, adding more flexibility and expressiveness.
+
+#### Associated Types
+
+Associated types are a way to define a placeholder type within a trait:
+
+```rust
+trait Iterator {
+    type Item;
+
+    fn next(&mut self) -> Option<Self::Item>;
+}
+```
+
+Here, `Item` is an associated type, and implementing types will specify what `Item` should be.
+
+#### Trait Bounds with `where`
+
+For complex trait bounds, Rust provides a `where` clause to make constraints easier to read:
+
+```rust
+fn complex_function<T>(x: T) -> i32
+where
+    T: Greet + Farewell,
+{
+    // x must implement both Greet and Farewell
+    println!("{}", x.greet());
+    println!("{}", x.say_goodbye());
+    42
+}
+```
+
+
+### Display and Error trait
 In Rust, applying the `Display` trait and the `Error` trait on a struct, like `MerkleTreeError`, has distinct purposes. Let's break it down:
 
 ### 1. `Display` Trait Implementation
@@ -33,6 +222,10 @@ impl std::error::Error for MerkleTreeError {}
   - It also enables your error to provide additional error information (e.g., `source` method for nested errors) if needed.
 
 In combination, the `Display` trait makes your error messages human-readable, while the `Error` trait allows your custom error types to work seamlessly with Rust’s error-handling mechanisms. 
+
+### Conclusion
+
+Traits in Rust are a powerful feature that allows you to define and share behavior across different types. They enable polymorphism, provide default method implementations, and facilitate the creation of flexible, reusable code. Traits are central to Rust’s type system and play a crucial role in generic programming, ensuring that you can write both safe and expressive code.
 
 
 ## Macros
@@ -140,10 +333,93 @@ There are two main types of macros in Rust:
 
 Macros are a compile-time feature that allows for more flexibility and code generation, whereas functions are runtime constructs focused on computation with fixed input and output. They complement each other in Rust, with macros typically used for metaprogramming and code expansion, while functions are used for logic and operations on data.
 
+## `?` Operator
 
-Let's go through the `TreeNode` struct line by line and explain its components, including the `Box` pointers, why they are used, and potential alternatives.
+The `?` operator in Rust is a syntactic sugar that simplifies error handling, particularly when working with functions that return a `Result` or `Option` type. It provides a convenient way to propagate errors or handle `None` values without needing to write extensive match or if-let statements.
 
-## `TreeNode` struct 
+### How the `?` Operator Works
+
+#### With `Result`
+When used with a `Result`, the `?` operator performs the following steps:
+1. **Success Case (`Ok`)**: If the `Result` is `Ok(T)`, the operator extracts the value `T` and the function continues executing.
+2. **Error Case (`Err`)**: If the `Result` is `Err(E)`, the operator immediately returns the `Err(E)` from the function it is used in. This short-circuits the function, meaning no further code in the function is executed.
+
+#### With `Option`
+When used with an `Option`, the `?` operator behaves similarly:
+1. **Some Case (`Some`)**: If the `Option` is `Some(T)`, the operator extracts the value `T` and the function continues executing.
+2. **None Case (`None`)**: If the `Option` is `None`, the operator returns `None` from the function it is used in, short-circuiting the function.
+
+### Example with `Result`
+
+Consider a function that opens a file and reads its contents into a string. Each operation could potentially fail, returning a `Result`.
+
+```rust
+use std::fs::File;
+use std::io::{self, Read};
+
+fn read_file_contents(path: &str) -> Result<String, io::Error> {
+    let mut file = File::open(path)?; // Uses `?` to propagate errors
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?; // Uses `?` again
+    Ok(contents)
+}
+```
+
+In this example:
+- `File::open(path)?` attempts to open the file. If it fails (i.e., returns `Err`), the function will return the error.
+- `file.read_to_string(&mut contents)?` reads the file contents into a string. If this operation fails, the error is propagated similarly.
+
+### Example with `Option`
+
+Consider a function that processes an input only if it is `Some`:
+
+```rust
+fn increment_option_value(input: Option<i32>) -> Option<i32> {
+    let value = input?; // Propagates `None` if `input` is `None`
+    Some(value + 1)
+}
+```
+
+In this case:
+- `input?` extracts the value if `input` is `Some`. If `input` is `None`, the function returns `None` immediately.
+
+### Benefits of the `?` Operator
+
+1. **Simplifies Error Handling**: The `?` operator reduces boilerplate code by eliminating the need for explicit match or if-let statements to handle errors and `None` values.
+
+2. **Improves Readability**: By using `?`, code becomes more concise and readable, making it easier to follow the flow of functions that handle multiple potential failure points.
+
+3. **Ensures Early Return on Errors**: The `?` operator automatically returns the error or `None` when a failure occurs, reducing the chance of overlooking error handling.
+
+4. **Composability**: Functions that utilize `?` can be easily composed with other functions that return `Result` or `Option`, facilitating modular and reusable code.
+
+### Example Without `?`
+
+Without the `?` operator, the same `read_file_contents` function would be more verbose:
+
+```rust
+fn read_file_contents(path: &str) -> Result<String, io::Error> {
+    let mut file = match File::open(path) {
+        Ok(f) => f,
+        Err(e) => return Err(e),
+    };
+
+    let mut contents = String::new();
+    match file.read_to_string(&mut contents) {
+        Ok(_) => Ok(contents),
+        Err(e) => Err(e),
+    }
+}
+```
+
+This version involves explicit matches for every operation, making the code longer and less readable.
+
+### Conclusion
+
+The `?` operator in Rust is a powerful tool for simplifying error and `None` handling in functions that return `Result` or `Option`. It enhances readability, reduces boilerplate code, and ensures that errors are handled consistently and early, improving the overall robustness and maintainability of Rust code.
+
+
+## Box Pointers & `TreeNode` struct 
 
 ```rust
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
@@ -488,4 +764,68 @@ fn main() {
 - `String` is an **owned**, heap-allocated, and growable string type.
 - `&str` is a **borrowed**, immutable reference to a string (often called a string slice).
 - Use `String` when you need ownership and mutability; use `&str` when you need to borrow and don't need to modify the string.
+
+
+## `find_sibling` `as_ref().unwrap()`
+
+
+### Key Points About `as_ref().unwrap()`
+
+1. **`as_ref()`**:
+   - When you have an `Option<Box<T>>`, calling `.as_ref()` converts it to an `Option<&Box<T>>`.
+   - This allows you to borrow the `Box` without taking ownership, meaning the original `Option<Box<T>>` remains intact.
+
+2. **`unwrap()`**:
+   - `.unwrap()` on an `Option` will return the contained value if it is `Some`. If it’s `None`, it will panic.
+   - In this code, `.unwrap()` is used because the logic assumes that if a node is the left (or right) child, then the right (or left) sibling must exist.
+
+3. **Why Not `expect()` Instead of `unwrap()`?**
+   - `unwrap()` is used here to simplify the code. However, in production code, using `.expect("error message")` is often better, as it provides a more descriptive error message in case of a panic.
+
+### Alternative Approach
+Using `.unwrap()` assumes that the sibling must exist, which can be risky if the tree structure is inconsistent. A safer approach would be to return an error instead of panicking:
+
+```rust
+return parent.right.as_ref().ok_or_else(|| MerkleTreeError::new("right sibling not found"));
+```
+
+This would return an error if the sibling is missing instead of panicking.
+
+### Summary
+- The `as_ref()` method is used to borrow the `Box<TreeNode>` without taking ownership, converting `Option<Box<T>>` into `Option<&Box<T>>`.
+- The `.unwrap()` method is used to extract the sibling node, assuming it exists, and dereference the `Box` to get the `TreeNode`. If the sibling doesn't exist, the code would panic with `.unwrap()`.
+
+
+## Deref coercion in test cases
+
+The code compiles because &Vec<Vec<u8>> can be implicitly converted to &[Vec<u8>] due to Rust's deref coercion. **These two types are not the same, but they are compatible in many cases.**
+
+### Difference Between `Vec<>` and `[]`:
+
+1. **`Vec<T>`**:
+   - A heap-allocated, growable array that owns its data.
+   - Example:
+     ```rust
+     let v: Vec<u8> = vec![1, 2, 3]; // Owns the data
+     ```
+
+2. **`[T]` (Slice)**:
+   - A view into a contiguous sequence of data (could be part of an array or vector), but it doesn’t own the data.
+   - Example:
+     ```rust
+     let s: &[u8] = &v; // Borrow a slice from the vector
+     ```
+
+### In Your test module Code:
+- `files` is of type `&Vec<Vec<u8>>`.
+- `MerkleTree::new()` expects `&[Vec<u8>]` (a slice of `Vec<u8>`).
+  
+Rust automatically converts `&Vec<T>` to `&[T]` because a vector (`Vec<T>`) is just a dynamic array, and a slice (`[T]`) is a reference to such an array. So:
+
+```rust
+let files: &Vec<Vec<u8>> = &tests[0].1; // Vec<Vec<u8>>
+let slice: &[Vec<u8>] = files; // Coerced to a slice
+```
+
+This happens implicitly, making `&Vec<T>` compatible with `&[T]`.
 
