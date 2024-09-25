@@ -829,3 +829,223 @@ let slice: &[Vec<u8>] = files; // Coerced to a slice
 
 This happens implicitly, making `&Vec<T>` compatible with `&[T]`.
 
+## ARC 
+
+In Rust, `Arc` stands for **Atomic Reference Counting**, and it is a smart pointer type used to enable **shared ownership** of data across multiple threads. It ensures that memory is cleaned up when there are no more references to the data. The key feature of `Arc` is that it is **thread-safe**, allowing multiple threads to hold references to the same data without causing data races.
+
+Here's a step-by-step explanation:
+
+1. **Reference Counting**:
+   - When you use `Arc`, Rust keeps a count of how many references (owners) are pointing to the data it wraps.
+   - When a new owner is created, the count increases.
+   - When an owner goes out of scope, the count decreases.
+   - When the count reaches zero, the memory is freed.
+
+2. **Atomic**:
+   - `Arc` is **atomic**, meaning it is safe to use across threads. This is unlike `Rc` (Reference Counting), which is not thread-safe and should only be used in single-threaded contexts.
+
+3. **Shared Ownership**:
+   - `Arc` enables multiple parts of your program to share ownership of some data. For instance, if you have multiple threads that need access to the same data, you can wrap that data in an `Arc`.
+
+### Simple Example of `Arc`
+
+Here’s a simple example to demonstrate the concept of `Arc`:
+
+```rust
+use std::sync::Arc;
+use std::thread;
+
+fn main() {
+    // Create an `Arc` to wrap around a value (a number in this case)
+    let counter = Arc::new(5);
+
+    // Clone the Arc to share ownership with another thread
+    let counter_shared = Arc::clone(&counter);
+
+    // Spawn a new thread and move the cloned `Arc` into the new thread
+    let handle = thread::spawn(move || {
+        println!("Counter in thread: {}", counter_shared);
+    });
+
+    // The original Arc is still accessible here
+    println!("Counter in main thread: {}", counter);
+
+    // Wait for the thread to finish
+    handle.join().unwrap();
+}
+```
+
+### Explanation:
+1. **`Arc::new(5)`**: Creates a new `Arc` that wraps the value `5`. Now, `counter` is an `Arc<i32>`, meaning it points to an integer (the value `5`) that can be shared across threads.
+2. **`Arc::clone(&counter)`**: Clones the `Arc`, creating a new reference to the same data. This increases the reference count. Now both `counter` and `counter_shared` point to the same value (`5`).
+3. **`thread::spawn`**: The `counter_shared` is moved into the new thread, allowing the new thread to print the value of `counter_shared`.
+4. **Reference Counting**: When the thread is done and `counter_shared` goes out of scope, the reference count is decremented. When both the original `counter` and `counter_shared` are done, the reference count reaches zero, and the memory is freed.
+
+
+In Rust, a **future** is a value that represents a computation that **may not have finished yet**. Futures are essential in asynchronous programming, where tasks are executed concurrently without blocking the main thread. A future essentially describes work that will be done later and allows the program to continue with other tasks while waiting for that work to complete.
+
+## Future in Rust
+
+A **future** is like a promise that a value will be available at some point in the future. When a future is created, it doesn’t start running immediately. The actual work happens when you "poll" the future or "await" its result.
+
+To understand the concept better, let's take a basic analogy:
+
+- Imagine you're ordering food online. When you place your order, you don’t immediately have your food, but you know it’s coming. While you're waiting, you can do other things (like watching a movie). Once the food arrives, you "consume" it. Similarly, a **future** in Rust represents something that will eventually happen (like receiving your food), and **awaiting** it is like waiting for the food to arrive.
+
+### A Simple Example
+
+Let's look at a simple Rust program that simulates a delayed computation using a future.
+
+#### Example: Simulating an Asynchronous Task
+
+```rust
+use std::time::Duration;
+use tokio::time::sleep; // Using Tokio runtime for async
+
+// This function returns a Future that will complete after 2 seconds
+async fn delayed_task() {
+    println!("Task started...");
+    
+    // Simulate a delay (e.g., like fetching data from the network)
+    sleep(Duration::from_secs(2)).await;
+    
+    println!("Task completed after 2 seconds!");
+}
+
+#[tokio::main] // The Tokio runtime is required to run async functions
+async fn main() {
+    println!("Starting the main program...");
+
+    // Start the asynchronous task
+    delayed_task().await; // Awaiting the completion of the future
+
+    println!("Main program finished!");
+}
+```
+
+#### Line-by-Line Explanation:
+
+1. **`async fn delayed_task()`**:  
+   - This declares an asynchronous function, meaning it returns a **future**. The function doesn't block when it's called; instead, it yields control back to the runtime (Tokio in this case) until it's ready to continue.
+
+2. **`sleep(Duration::from_secs(2)).await`**:  
+   - This simulates a delay (like fetching data or waiting for something to complete) by waiting for 2 seconds. The `.await` keyword is used to pause this asynchronous task until the sleep finishes. It doesn't block the entire program, though; other asynchronous tasks can run during this time.
+
+3. **`#[tokio::main]`**:  
+   - This attribute macro initializes the **Tokio runtime**, which is a framework for writing asynchronous programs in Rust. It allows the `main` function to execute asynchronous code.
+
+4. **`delayed_task().await`**:  
+   - This calls the asynchronous task and waits for it to complete. The task returns a future that we **await**, meaning we don’t move on until the task is finished.
+
+#### Output:
+```
+Starting the main program...
+Task started...
+(2-second delay)
+Task completed after 2 seconds!
+Main program finished!
+```
+
+### How a Future Works Behind the Scenes
+
+A future in Rust is an object that implements the `Future` trait. This trait defines a single method called `poll`, which drives the future to completion. When you `await` a future, you're telling the runtime to keep polling it until it's ready to produce a result.
+
+- When a future is created (e.g., `delayed_task()`), it doesn’t start doing its work right away. Instead, it’s like a "plan" of what needs to happen.
+- The actual work begins when you "poll" the future, and the task gets suspended until the awaited result is ready.
+  
+### Key Points to Remember:
+1. **Futures are lazy**: Nothing happens until you `.await` or "poll" the future.
+2. **Non-blocking**: While a future is being awaited, the program can continue running other code, allowing concurrency without blocking.
+3. **Asynchronous tasks**: Using futures and `async`/`await` allows for efficient I/O-bound tasks like reading files, fetching data from a network, or running timers, where waiting on external resources doesn't freeze the whole program.
+
+This pattern makes Rust highly efficient for writing servers, networking applications, and tasks requiring non-blocking behavior.
+
+
+## `tokio::main`
+
+In Rust, the **default** `main` function cannot be declared as `async` because Rust’s entry point for executing a program (`fn main()`) is expected to be synchronous. This is a constraint imposed by the language. However, by using an **asynchronous runtime** like `Tokio`, you can enable asynchronous execution inside the `main` function.
+
+### What is happening in your code with `#[tokio::main]`?
+
+```rust
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+```
+
+Here’s what makes it work:
+
+1. **`#[tokio::main]` macro**:
+   - This attribute macro from the `tokio` crate converts the `main` function into an asynchronous context by automatically generating the necessary runtime setup code for you.
+   - It sets up the `tokio` runtime so that you can use `async`/`await` directly inside the `main` function without manually creating the runtime (as you did with `Runtime::new()` in the previous CLI example).
+
+2. **`async fn main()`**:
+   - This allows your `main` function to be asynchronous, letting you use `await` within it.
+   - Normally, without a runtime, `main` cannot be `async` because the Rust compiler expects `main` to complete synchronously. But with `#[tokio::main]`, the macro handles this limitation by wrapping your `main` function in a `tokio` runtime.
+
+3. **What does `#[tokio::main]` do under the hood?**
+   - It generates code that looks like this (simplified):
+     ```rust
+     fn main() -> Result<(), Box<dyn std::error::Error>> {
+         let rt = tokio::runtime::Runtime::new()?;
+         rt.block_on(async_main()) // async_main contains your async code.
+     }
+
+     async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
+         // Your async code...
+     }
+     ```
+
+### Why the difference?
+In the CLI example you showed earlier, the `main` function wasn’t `async`, so you needed to manually create a runtime with `Runtime::new()` and use `block_on` to execute asynchronous code. The `#[tokio::main]` macro in your `server.rs` file avoids this by automatically setting up the runtime for you and enabling `async` in the `main` function.
+
+### Key takeaway:
+- **Default Rust `main` is synchronous**, but **with `#[tokio::main]`**, you can have an `async` main function, as the macro manages the runtime setup and allows asynchronous operations inside `main`.
+
+
+
+## `sync` vs `async`
+
+
+In the code:
+
+```rust
+let mut client = rt.block_on(setup_grpc_client())?;
+```
+
+The `rt.block_on()` call takes an `async` function (`setup_grpc_client`) and runs it to completion, but **it blocks the main thread** until the async task is finished.
+
+### Why does `block_on()` block the main thread?
+- **`block_on()`** is designed to run asynchronous code synchronously. It runs the provided future (here, `setup_grpc_client()`) to completion but blocks the thread while doing so.
+- This is useful when you're working in a context (like a synchronous `main` function) but still need to execute an asynchronous task.
+
+### Why not just do it synchronously?
+
+1. **Compatibility with async code**: 
+   - `setup_grpc_client()` is likely written as an `async fn` because it might involve non-blocking I/O operations, such as network requests (e.g., connecting to a gRPC server). 
+   - In Rust, asynchronous functions (`async fn`) are designed to work cooperatively and efficiently with other asynchronous tasks. They allow tasks to be suspended and resumed without blocking the entire thread.
+   
+2. **Integration with other async functions**: 
+   - If `setup_grpc_client()` internally calls other async functions (e.g., initializing the gRPC client), it would be cumbersome to rewrite all of those as synchronous functions.
+   - Using `async` allows better handling of non-blocking operations (like network calls) and avoids unnecessary blocking of the main thread or other async tasks.
+
+3. **Future expansion**:
+   - Even if `setup_grpc_client()` doesn’t seem to need async now, it’s often written asynchronously to prepare for future expansion. Asynchronous functions are more flexible and scale better when dealing with I/O-heavy tasks.
+   
+4. **Interfacing with asynchronous libraries**:
+   - Many Rust libraries, such as `tokio` and `tonic` (for gRPC), are designed to be asynchronous by default. If you want to use these libraries, you'll often need to use `async` functions even in otherwise synchronous code.
+
+### Why not make the whole `main` async?
+You could make the entire `main` function asynchronous using `#[tokio::main]` like this:
+
+```rust
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = setup_grpc_client().await?;
+    // Rest of the code...
+}
+```
+
+This approach would eliminate the need for `rt.block_on()`, making the flow more consistent. However, if you’re using a mix of synchronous and asynchronous code, using `block_on()` can be a convenient way to handle async tasks within a mostly synchronous context.
+
+### When to keep it synchronous:
+If `setup_grpc_client()` could be made entirely synchronous without any asynchronous operations (i.e., no network or I/O that benefits from async), you could rewrite it as a synchronous function. However, since it's likely interacting with other async systems or performing non-blocking I/O, the async approach is preferred for scalability and efficiency.
