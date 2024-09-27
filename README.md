@@ -1,5 +1,203 @@
 # General Notes
 
+## Vectors vs Slices
+In Rust, both **vectors** and **slices** are ways to handle collections of data, but they differ in how they manage memory and their flexibility. Let’s go over the key differences between them:
+
+### 1. **Ownership and Size**
+   - **Vector (`Vec<T>`)**: 
+     - A vector is a **heap-allocated, resizable collection** of elements of type `T`. It **owns** its data, meaning it manages the memory where the elements are stored. 
+     - Vectors can grow or shrink in size dynamically. You can add or remove elements from a vector as needed.
+   
+   - **Slice (`&[T]` or `&mut [T]`)**: 
+     - A slice is a **view** into a portion of a collection. It **does not own** the data; it borrows a reference to it. 
+     - Slices are fixed in size and can only refer to a contiguous section of a collection (like a vector, array, or string). They cannot be resized or modified (if immutable).
+
+### 2. **Memory Allocation**
+   - **Vector**: A vector allocates memory dynamically on the heap, and it has the ability to reallocate memory when more space is needed (e.g., when you push elements onto it).
+   - **Slice**: A slice doesn’t allocate or manage memory on its own; it simply borrows a reference to existing data.
+
+### 3. **Mutability**
+   - **Vector**: You can have both mutable and immutable vectors. A mutable vector can be changed (elements can be added, removed, or modified).
+   - **Slice**: Slices can be either immutable (`&[T]`) or mutable (`&mut [T]`). With a mutable slice, you can modify the data, but you cannot change the size of the slice.
+
+### 4. **Creation**
+   - **Vector**: Vectors are created using `Vec::new()` or using the `vec![]` macro.
+     ```rust
+     let mut vec = Vec::new();       // Creates an empty vector
+     let vec = vec![1, 2, 3, 4];     // Creates a vector with initial values
+     ```
+   - **Slice**: Slices are created by referencing an existing collection, like a vector, array, or string.
+     ```rust
+     let arr = [1, 2, 3, 4];
+     let slice: &[i32] = &arr[1..3]; // A slice of an array (from index 1 to 2)
+     ```
+
+### 5. **Resizing**
+   - **Vector**: Vectors can be resized. You can push, pop, or remove elements.
+     ```rust
+     let mut vec = vec![1, 2, 3];
+     vec.push(4);  // Vector is now [1, 2, 3, 4]
+     vec.pop();    // Vector is now [1, 2, 3]
+     ```
+   - **Slice**: Slices cannot be resized. They are always a fixed-size view into part of a collection.
+
+### 6. **Usage**
+   - **Vector**: Use vectors when you need a dynamically-sized collection that owns its data and you plan to modify or grow/shrink the collection.
+   - **Slice**: Use slices when you want to refer to a part of a collection without taking ownership or when you don't need to modify the size of the collection.
+
+### Example
+
+#### Vector:
+```rust
+let mut vec = vec![1, 2, 3];
+vec.push(4); // Can grow
+println!("{:?}", vec); // Output: [1, 2, 3, 4]
+```
+
+#### Slice:
+```rust
+let arr = [1, 2, 3, 4, 5];
+let slice = &arr[1..4]; // Refers to part of the array, cannot change size
+println!("{:?}", slice); // Output: [2, 3, 4]
+```
+
+### Summary:
+- **Vectors** own their data, are resizable, and allocate memory on the heap.
+- **Slices** are views into a collection (like a vector or array), are fixed in size, and borrow the data they point to without owning it.
+
+
+## Vectors vs Arrays
+
+### 1. **Size**
+   - **Array (`[T; N]`)**:
+     - Arrays have a **fixed size** determined at compile time. The size `N` is part of the type signature.
+     - Once created, the size of an array cannot change.
+     - Example: `[i32; 4]` is an array of 4 elements of type `i32`.
+   
+   - **Vector (`Vec<T>`)**:
+     - Vectors are **dynamically sized**. They can grow or shrink during runtime, and the size is not known at compile time.
+     - You can add, remove, or modify elements dynamically.
+     - Example: `Vec<i32>` is a vector of `i32` elements, but the number of elements can change.
+
+### 2. **Memory Allocation**
+   - **Array**:
+     - Arrays are usually allocated on the **stack** if their size is small and known at compile time. For larger arrays, they can be moved to the heap, but the memory layout is still fixed at the time of allocation.
+   
+   - **Vector**:
+     - Vectors are always allocated on the **heap**, which allows them to be resized dynamically. Heap allocation provides flexibility, but it has a performance cost compared to stack allocation.
+
+### 3. **Mutability and Resizing**
+   - **Array**:
+     - Arrays have a **fixed size**, and you cannot add or remove elements. However, you can modify the elements if the array is mutable.
+     ```rust
+     let mut arr = [1, 2, 3, 4]; // Array of 4 elements
+     arr[0] = 10; // You can modify elements
+     ```
+   
+   - **Vector**:
+     - Vectors are **resizable**. You can use methods like `push()`, `pop()`, and `resize()` to change their size dynamically.
+     ```rust
+     let mut vec = vec![1, 2, 3]; // Vector with 3 elements
+     vec.push(4); // Vector now has 4 elements
+     ```
+
+### 4. **Syntax and Initialization**
+   - **Array**:
+     - Arrays are initialized with a fixed number of elements and require a specific size. They use square brackets `[]`.
+     - You can also initialize all elements to the same value with `[value; N]`.
+     ```rust
+     let arr = [1, 2, 3, 4];    // Array with 4 elements
+     let all_zeros = [0; 5];    // Array with 5 elements, all set to 0
+     ```
+   
+   - **Vector**:
+     - Vectors are often initialized using the `vec![]` macro, which allows for dynamic size without specifying a fixed length.
+     ```rust
+     let vec = vec![1, 2, 3];   // Vector with 3 elements
+     let empty_vec: Vec<i32> = Vec::new(); // Empty vector
+     ```
+
+### 5. **Type Signature**
+   - **Array**:
+     - The type of an array includes both the element type `T` and the size `N`. For example, `[i32; 4]` means an array of 4 `i32` elements.
+   
+   - **Vector**:
+     - The type of a vector only includes the element type `T`, not the size. For example, `Vec<i32>` is a vector of `i32` elements of variable length.
+
+### 6. **Performance**
+   - **Array**:
+     - Arrays are generally faster for access because they are usually stored on the stack and their size is fixed. This also avoids the overhead of heap allocation.
+     - Arrays can be useful in situations where performance is critical and the size of the collection is known and fixed.
+   
+   - **Vector**:
+     - Vectors incur overhead due to heap allocation, but they are much more flexible and powerful when the size of the collection is not known at compile time or needs to change dynamically.
+
+### 7. **Usage Context**
+   - **Array**:
+     - Use arrays when you have a **fixed-size** collection that is known at compile time and doesn't need to change.
+     ```rust
+     let days_of_week = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+     ```
+   
+   - **Vector**:
+     - Use vectors when you need a **dynamic, resizable** collection, especially when the number of elements is unknown at compile time.
+     ```rust
+     let mut dynamic_numbers = Vec::new();
+     dynamic_numbers.push(1); // Adding elements dynamically
+     dynamic_numbers.push(2);
+     ```
+
+### Example Code
+
+#### Array Example:
+```rust
+fn array_example() {
+    let arr = [1, 2, 3, 4];  // Fixed-size array
+    println!("Array: {:?}", arr);
+    
+    // Access elements by index
+    println!("First element: {}", arr[0]);
+    
+    // Modify elements
+    let mut arr = [1, 2, 3, 4];
+    arr[1] = 20;
+    println!("Modified array: {:?}", arr);
+}
+```
+
+#### Vector Example:
+```rust
+fn vector_example() {
+    let mut vec = vec![1, 2, 3];  // Dynamic-size vector
+    println!("Vector: {:?}", vec);
+    
+    // Add elements dynamically
+    vec.push(4);
+    println!("After push: {:?}", vec);
+    
+    // Remove the last element
+    vec.pop();
+    println!("After pop: {:?}", vec);
+    
+    // Access elements by index
+    println!("First element: {}", vec[0]);
+}
+```
+
+### Summary:
+
+| Feature               | Array (`[T; N]`)                       | Vector (`Vec<T>`)                  |
+|-----------------------|----------------------------------------|------------------------------------|
+| **Size**              | Fixed at compile time                  | Dynamic, can change at runtime     |
+| **Memory**            | Stack (if small)                       | Heap                               |
+| **Resizing**          | Not allowed                            | Allowed (via `push`, `pop`, etc.)  |
+| **Type Signature**    | `[T; N]` (element type and size)       | `Vec<T>` (element type only)       |
+| **Initialization**    | Uses square brackets `[ ]`             | Uses `vec![]` macro or `Vec::new()`|
+| **Usage**             | For fixed-size, small collections      | For dynamic or unknown-size collections |
+| **Performance**       | Faster access, no heap overhead        | Slower due to heap allocation      |
+
+In summary, use arrays for fixed-size collections where performance matters, and use vectors for dynamic, resizable collections.
+
 ## Lifetimes
 
 Lifetimes in Rust are a way to express how long references to data are valid. They help ensure that you do not have dangling references—pointers to data that no longer exists—which can lead to undefined behavior or crashes in other programming languages. Lifetimes are a core part of Rust's ownership system, designed to guarantee memory safety without a garbage collector.
