@@ -695,76 +695,16 @@ pub struct TreeNode {
   - `Debug`: Allows for formatted output of the struct using the `{:?}` syntax, useful for debugging.
   - `Serialize` and `Deserialize`: These are traits from the `serde` crate, allowing the struct to be converted to and from a serialized format (like JSON, binary, etc.).
 
-#### 2. `pub struct TreeNode`
-
-- **pub struct**: Defines a public struct named `TreeNode`, which means it can be accessed from outside the module where it is declared.
-  
-#### 3. `pub hash: String`
-
-- **pub hash**: This field is public and holds a `String` value representing the **hash** of the node. In a Merkle tree, each node has a hash computed from its children's hashes (in the case of internal nodes) or directly from the data (in the case of leaf nodes).
-
-#### 4. `pub left_idx: usize` and `pub right_idx: usize`
-
-- **pub left_idx** and **pub right_idx**: These are public fields that store the **indices** of the left and right children of this node in some external list (like a flat array representing the tree). `usize` is the unsigned integer type in Rust typically used for indexing.
-
-#### 5. `pub left: Option<Box<TreeNode>>`
-
-- **pub left**: This field holds an `Option<Box<TreeNode>>`. Let's break it down:
-  - **`Option<T>`**: A Rust enum that can either be `Some(T)` (indicating the value exists) or `None` (indicating the absence of a value). In this case, it models the possibility of a `TreeNode` having a left child or not (e.g., if it is a leaf node, `left` would be `None`).
-  - **`Box<TreeNode>`**: A `Box` is a **heap-allocated smart pointer**. It allows you to allocate values (in this case, a `TreeNode`) on the heap instead of the stack. This is necessary because recursive structures like trees need to refer to instances of themselves, which requires heap allocation in Rust to avoid infinitely large stack frames.
-    - **Why Box?**: Without `Box`, Rust would try to allocate the entire tree on the stack, which is not feasible because stack frames have a fixed size. The `Box` pointer stores the `TreeNode` on the heap, allowing Rust to handle this recursive structure safely and efficiently.
-  - In summary, `left` is either:
-    - `None`: No left child.
-    - `Some(Box<TreeNode>)`: A `Box` pointing to another `TreeNode`, representing the left child.
-
-#### 6. `pub right: Option<Box<TreeNode>>`
-
-- **pub right**: Similar to `left`, this field represents the **right child** of the node. It uses an `Option<Box<TreeNode>>`, indicating that a node may have a right child or may not (if it's a leaf node).
 
 ### Why `Box` is Used Here
 
 - **Heap Allocation**: In Rust, recursive types (like a tree node that contains other tree nodes) must be placed on the heap to prevent stack overflow or unbounded memory usage. Since the size of the struct would be infinite if it contained itself directly, you need a pointer type like `Box` to place the recursive elements on the heap and allow the struct to have a finite, known size on the stack.
   
   Without `Box`, the compiler would not know how much space to allocate for a `TreeNode` because it contains itself (which could go on forever). `Box` is a smart pointer that resolves this by putting the actual `TreeNode` instances on the heap and just keeping the pointers (fixed size) on the stack.
-
-### Alternatives to `Box<TreeNode>`
-
-#### 1. **`Rc` or `Arc` (Reference Counting)**
-
-- **`Rc<TreeNode>`** (single-threaded) or **`Arc<TreeNode>`** (multi-threaded) are smart pointers that provide shared ownership of a value. They allow multiple parts of the code to hold references to the same `TreeNode`:
-  - If you need to **share ownership** of a node (e.g., if two parent nodes share a common child), `Rc` (or `Arc` for thread-safe reference counting) would be an alternative to `Box`. 
-  - However, they come with performance costs due to the reference counting overhead.
   
-  Example:
-  ```rust
-  pub left: Option<Rc<TreeNode>>,
-  pub right: Option<Rc<TreeNode>>,
-  ```
-
-#### 2. **`RefCell` or `RwLock` (Interior Mutability)**
-
-- If you need **mutability** of a `TreeNode` after creation (Rust enforces strict borrowing rules where mutable and immutable references are separate), you could wrap the `TreeNode` in a `RefCell` (single-threaded) or `RwLock` (thread-safe). These allow you to mutate the inner value even when the outer value is immutable.
+- **`Box<TreeNode>`**: A `Box` is a **heap-allocated smart pointer**. It allows you to allocate values (in this case, a `TreeNode`) on the heap instead of the stack. This is necessary because recursive structures like trees need to refer to instances of themselves, which requires heap allocation in Rust to avoid infinitely large stack frames.
+- **What happens without Box?**: Without `Box`, Rust would try to allocate the entire tree on the stack, which is not feasible because stack frames have a fixed size. The `Box` pointer stores the `TreeNode` on the heap, allowing Rust to handle this recursive structure safely and efficiently.
   
-  Example:
-  ```rust
-  pub left: Option<Rc<RefCell<TreeNode>>>,
-  pub right: Option<Rc<RefCell<TreeNode>>>,
-  ```
-
-  With this approach, multiple owners can share a node and mutate it without violating Rust’s borrowing rules.
-
-#### 3. **Enum-based Tree**
-
-- Instead of using pointers, you could define a tree using an enum that represents whether a node is a leaf or internal node. This may eliminate the need for `Option` and `Box` in simple trees:
-
-  ```rust
-  pub enum TreeNode {
-      Leaf { hash: String },
-      Internal { hash: String, left: Box<TreeNode>, right: Box<TreeNode> },
-  }
-  ```
-
-  This approach may be cleaner in cases where the tree structure is simple and doesn't need to handle missing children.
 
 ### Summary
 
@@ -1022,6 +962,55 @@ fn main() {
 - Use `String` when you need ownership and mutability; use `&str` when you need to borrow and don't need to modify the string.
 
 
+## Mutable Slices but no `&mut str`
+
+Rust does have **mutable slices**, but they apply to data types where mutation is allowed. For example, you can have mutable slices of arrays or vectors like `&mut [T]`, but **strings (`str`) are a special case** due to how Rust handles UTF-8 encoded data and memory management for strings.
+
+### Mutable Slices (`&mut [T]`)
+
+For most types, mutable slices (`&mut [T]`) exist and allow you to mutate the underlying elements. For instance, a mutable slice of an array or vector looks like this:
+
+```rust
+let mut arr = [1, 2, 3, 4];
+let slice: &mut [i32] = &mut arr[1..3]; // mutable slice
+slice[0] = 10;
+println!("{:?}", arr); // [1, 10, 3, 4]
+```
+
+In this case, `slice` is a mutable reference to part of the array, and you can modify the contents of the array through the slice.
+
+### Why No `&mut str`?
+
+In the case of `str`, Rust doesn't allow a `&mut str` for a few reasons:
+1. **UTF-8 Encoding:** Strings in Rust are encoded as UTF-8, which means the length of characters (bytes) can vary. Modifying a `&mut str` could lead to issues with reallocation or inconsistent lengths.
+2. **Immutability of Slices:** `&str` is a slice type, and it doesn't own the underlying data. If you allowed a `&mut str`, you could potentially modify the string in ways that violate UTF-8 guarantees or cause memory issues.
+
+Instead, Rust uses the `String` type for mutable strings. If you need to mutate a string, you can convert a `String` to a mutable reference (`&mut String`), and then modify the string’s contents.
+
+### Example with `String`:
+
+```rust
+let mut s = String::from("Hello");
+s.push_str(", world!"); // Mutating the string
+println!("{}", s); // "Hello, world!"
+```
+
+You can't do something like `&mut str` directly, but you can manipulate the `String` itself, which owns and manages its memory.
+
+### Mutable Byte Slice of a String (`&mut [u8]`)
+
+One workaround, though, is working with the **mutable byte slice** of the string (`&mut [u8]`):
+
+```rust
+let mut s = String::from("Hello");
+let bytes = unsafe { s.as_bytes_mut() }; // Mutable slice of the bytes
+bytes[0] = b'h'; // Modify the first byte
+println!("{}", s); // "hello"
+```
+
+Here, you're modifying the string at the byte level, but this should be done with care (e.g., ensuring valid UTF-8).
+
+
 ## `find_sibling` `as_ref().unwrap()`
 
 
@@ -1054,7 +1043,7 @@ This would return an error if the sibling is missing instead of panicking.
 
 ## Deref coercion in test cases
 
-The code compiles because &Vec<Vec<u8>> can be implicitly converted to &[Vec<u8>] due to Rust's deref coercion. **These two types are not the same, but they are compatible in many cases.**
+`&Vec<Vec<u8>>` can be implicitly converted to `&[Vec<u8>]` due to Rust's deref coercion. **These two types are not the same, but they are compatible in many cases.**
 
 ### Difference Between `Vec<>` and `[]`:
 
@@ -1085,9 +1074,9 @@ let slice: &[Vec<u8>] = files; // Coerced to a slice
 
 This happens implicitly, making `&Vec<T>` compatible with `&[T]`.
 
-## ARC 
+## Atomic Reference Counting (ARC) 
 
-In Rust, `Arc` stands for **Atomic Reference Counting**, and it is a smart pointer type used to enable **shared ownership** of data across multiple threads. It ensures that memory is cleaned up when there are no more references to the data. The key feature of `Arc` is that it is **thread-safe**, allowing multiple threads to hold references to the same data without causing data races.
+In Rust, `Arc` stands for **Atomic Reference Counting**, and it is a smart pointer type used to enable **shared ownership** of data across **multiple threads**. It ensures that memory is cleaned up when there are no more references to the data. The key feature of `Arc` is that it is **thread-safe**, allowing multiple threads to hold references to the same data without causing data races.
 
 Here's a step-by-step explanation:
 
@@ -1138,11 +1127,9 @@ fn main() {
 4. **Reference Counting**: When the thread is done and `counter_shared` goes out of scope, the reference count is decremented. When both the original `counter` and `counter_shared` are done, the reference count reaches zero, and the memory is freed.
 
 
-In Rust, a **future** is a value that represents a computation that **may not have finished yet**. Futures are essential in asynchronous programming, where tasks are executed concurrently without blocking the main thread. A future essentially describes work that will be done later and allows the program to continue with other tasks while waiting for that work to complete.
-
 ## Future in Rust
 
-A **future** is like a promise that a value will be available at some point in the future. When a future is created, it doesn’t start running immediately. The actual work happens when you "poll" the future or "await" its result.
+In Rust, a **future** is a value that represents a computation that **may not have finished yet**. Futures are essential in asynchronous programming, where tasks are executed concurrently without blocking the main thread. A future essentially describes work that will be done later and allows the program to continue with other tasks while waiting for that work to complete. A **future** is like a promise that a value will be available at some point in the future. When a future is created, it doesn’t start running immediately. The actual work happens when you "poll" the future or "await" its result.
 
 To understand the concept better, let's take a basic analogy:
 
@@ -1305,3 +1292,42 @@ This approach would eliminate the need for `rt.block_on()`, making the flow more
 
 ### When to keep it synchronous:
 If `setup_grpc_client()` could be made entirely synchronous without any asynchronous operations (i.e., no network or I/O that benefits from async), you could rewrite it as a synchronous function. However, since it's likely interacting with other async systems or performing non-blocking I/O, the async approach is preferred for scalability and efficiency.
+
+
+## `await` vs `block_on()`
+
+### 1. **`await` in Rust**
+
+- **Does not block the current thread**: When you use `.await?` in an `async` function, the current function pauses (i.e., yields control) while it waits for the result of the `async` operation, **without blocking the thread**. During this pause, other tasks can run on the same thread.
+- The `.await` keyword is designed to work with Rust's asynchronous runtime, allowing multiple async tasks to be run concurrently on the same thread, thanks to **cooperative multitasking**.
+
+Example:
+```rust
+async fn some_async_function() -> Result<(), Box<dyn std::error::Error>> {
+    let result = async_operation().await?; // Does not block the thread
+    println!("Operation complete: {:?}", result);
+    Ok(())
+}
+```
+Here, the `await` does not block the thread, but the execution will continue when the async operation is ready (yielding to other tasks in the meantime).
+
+### 2. **`rt.block_on()`**
+
+- **Blocks the current thread**: When you use `rt.block_on()`, it will **block the current thread** until the async function or task completes.
+- This method is typically used to start an asynchronous operation from a synchronous context (like the `main` function or in unit tests), forcing the thread to wait until the task completes.
+
+Example:
+```rust
+let rt = tokio::runtime::Runtime::new().unwrap();
+rt.block_on(async {
+    let result = async_operation().await;
+    println!("Operation complete: {:?}", result);
+});
+```
+Here, `rt.block_on()` will block the thread it's running on until the `async_operation()` has completed, so no other work can be done on that thread during the wait.
+
+### Key Difference:
+- **`.await?` does not block the thread**: It allows the task to pause while other tasks can continue running.
+- **`rt.block_on()` blocks the thread**: It halts the execution of the current thread until the future completes.
+
+
